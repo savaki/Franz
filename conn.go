@@ -139,8 +139,8 @@ func NewConnWith(conn net.Conn, config ConnConfig) *Conn {
 // describeGroups retrieves the specified groups
 //
 // See http://kafka.apache.org/protocol.html#The_Messages_DescribeGroups
-func (c *Conn) describeGroups(request describeGroupsRequestV1) (describeGroupsResponseV1, error) {
-	var response describeGroupsResponseV1
+func (c *Conn) DescribeGroupsV1(request DescribeGroupsRequestV1) (DescribeGroupsResponseV1, error) {
+	var response DescribeGroupsResponseV1
 
 	err := c.readOperation(
 		func(deadline time.Time, id int32) error {
@@ -153,11 +153,11 @@ func (c *Conn) describeGroups(request describeGroupsRequestV1) (describeGroupsRe
 		},
 	)
 	if err != nil {
-		return describeGroupsResponseV1{}, err
+		return DescribeGroupsResponseV1{}, err
 	}
 	for _, group := range response.Groups {
 		if group.ErrorCode != 0 {
-			return describeGroupsResponseV1{}, Error(group.ErrorCode)
+			return DescribeGroupsResponseV1{}, Error(group.ErrorCode)
 		}
 	}
 
@@ -167,8 +167,8 @@ func (c *Conn) describeGroups(request describeGroupsRequestV1) (describeGroupsRe
 // findCoordinator finds the coordinator for the specified group or transaction
 //
 // See http://kafka.apache.org/protocol.html#The_Messages_FindCoordinator
-func (c *Conn) findCoordinator(request findCoordinatorRequestV1) (findCoordinatorResponseV1, error) {
-	var response findCoordinatorResponseV1
+func (c *Conn) FindCoordinatorV1(request FindCoordinatorRequestV1) (FindCoordinatorResponseV1, error) {
+	var response FindCoordinatorResponseV1
 
 	err := c.readOperation(
 		func(deadline time.Time, id int32) error {
@@ -181,10 +181,10 @@ func (c *Conn) findCoordinator(request findCoordinatorRequestV1) (findCoordinato
 		},
 	)
 	if err != nil {
-		return findCoordinatorResponseV1{}, err
+		return FindCoordinatorResponseV1{}, err
 	}
 	if response.ErrorCode != 0 {
-		return findCoordinatorResponseV1{}, Error(response.ErrorCode)
+		return FindCoordinatorResponseV1{}, Error(response.ErrorCode)
 	}
 
 	return response, nil
@@ -271,8 +271,8 @@ func (c *Conn) leaveGroup(request leaveGroupRequestV1) (leaveGroupResponseV1, er
 // listGroups lists all the consumer groups
 //
 // See http://kafka.apache.org/protocol.html#The_Messages_ListGroups
-func (c *Conn) listGroups(request listGroupsRequestV1) (listGroupsResponseV1, error) {
-	var response listGroupsResponseV1
+func (c *Conn) ListGroupsV1(request ListGroupsRequestV1) (ListGroupsResponseV1, error) {
+	var response ListGroupsResponseV1
 
 	err := c.readOperation(
 		func(deadline time.Time, id int32) error {
@@ -285,10 +285,10 @@ func (c *Conn) listGroups(request listGroupsRequestV1) (listGroupsResponseV1, er
 		},
 	)
 	if err != nil {
-		return listGroupsResponseV1{}, err
+		return ListGroupsResponseV1{}, err
 	}
 	if response.ErrorCode != 0 {
-		return listGroupsResponseV1{}, Error(response.ErrorCode)
+		return ListGroupsResponseV1{}, Error(response.ErrorCode)
 	}
 
 	return response, nil
@@ -327,8 +327,8 @@ func (c *Conn) offsetCommit(request offsetCommitRequestV3) (offsetCommitResponse
 // offsetFetch fetches the offsets for the specified topic partitions
 //
 // See http://kafka.apache.org/protocol.html#The_Messages_OffsetFetch
-func (c *Conn) offsetFetch(request offsetFetchRequestV3) (offsetFetchResponseV3, error) {
-	var response offsetFetchResponseV3
+func (c *Conn) OffsetFetchV3(request OffsetFetchRequestV3) (OffsetFetchResponseV3, error) {
+	var response OffsetFetchResponseV3
 
 	err := c.readOperation(
 		func(deadline time.Time, id int32) error {
@@ -341,15 +341,15 @@ func (c *Conn) offsetFetch(request offsetFetchRequestV3) (offsetFetchResponseV3,
 		},
 	)
 	if err != nil {
-		return offsetFetchResponseV3{}, err
+		return OffsetFetchResponseV3{}, err
 	}
 	if response.ErrorCode != 0 {
-		return offsetFetchResponseV3{}, Error(response.ErrorCode)
+		return OffsetFetchResponseV3{}, Error(response.ErrorCode)
 	}
 	for _, r := range response.Responses {
 		for _, pr := range r.PartitionResponses {
 			if pr.ErrorCode != 0 {
-				return offsetFetchResponseV3{}, Error(pr.ErrorCode)
+				return OffsetFetchResponseV3{}, Error(pr.ErrorCode)
 			}
 		}
 	}

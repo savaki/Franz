@@ -457,7 +457,7 @@ func waitForCoordinator(t *testing.T, conn *Conn, groupID string) {
 	// appear to happen if the kafka been running for a while.
 	const maxAttempts = 20
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
-		_, err := conn.findCoordinator(findCoordinatorRequestV1{
+		_, err := conn.FindCoordinatorV1(FindCoordinatorRequestV1{
 			CoordinatorKey: groupID,
 		})
 		switch err {
@@ -539,7 +539,7 @@ func testConnDescribeGroupRetrievesAllGroups(t *testing.T, conn *Conn) {
 	_, _, stop1 := createGroup(t, conn, groupID)
 	defer stop1()
 
-	out, err := conn.describeGroups(describeGroupsRequestV1{
+	out, err := conn.DescribeGroupsV1(DescribeGroupsRequestV1{
 		GroupIDs: []string{groupID},
 	})
 	if err != nil {
@@ -561,7 +561,7 @@ func testConnFindCoordinator(t *testing.T, conn *Conn) {
 		if attempt != 0 {
 			time.Sleep(time.Millisecond * 50)
 		}
-		response, err := conn.findCoordinator(findCoordinatorRequestV1{CoordinatorKey: groupID})
+		response, err := conn.FindCoordinatorV1(FindCoordinatorRequestV1{CoordinatorKey: groupID})
 		if err != nil {
 			switch err {
 			case GroupCoordinatorNotAvailable:
@@ -661,7 +661,7 @@ func testConnListGroupsReturnsGroups(t *testing.T, conn *Conn) {
 	_, _, stop2 := createGroup(t, conn, group2)
 	defer stop2()
 
-	out, err := conn.listGroups(listGroupsRequestV1{})
+	out, err := conn.ListGroupsV1(ListGroupsRequestV1{})
 	if err != nil {
 		t.Fatalf("bad err: %v", err)
 	}
@@ -694,16 +694,16 @@ func testConnFetchAndCommitOffsets(t *testing.T, conn *Conn) {
 	generationID, memberID, stop := createGroup(t, conn, groupID)
 	defer stop()
 
-	request := offsetFetchRequestV3{
+	request := OffsetFetchRequestV3{
 		GroupID: groupID,
-		Topics: []offsetFetchRequestV3Topic{
+		Topics: []OffsetFetchRequestV3Topic{
 			{
 				Topic:      conn.topic,
 				Partitions: []int32{0},
 			},
 		},
 	}
-	fetch, err := conn.offsetFetch(request)
+	fetch, err := conn.OffsetFetchV3(request)
 	if err != nil {
 		t.Fatalf("bad err: %v", err)
 	}
@@ -742,7 +742,7 @@ func testConnFetchAndCommitOffsets(t *testing.T, conn *Conn) {
 		t.Fatalf("bad error: %v", err)
 	}
 
-	fetch, err = conn.offsetFetch(request)
+	fetch, err = conn.OffsetFetchV3(request)
 	if err != nil {
 		t.Fatalf("bad error: %v", err)
 	}

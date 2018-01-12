@@ -8,12 +8,12 @@ import (
 )
 
 func TestOffsetFetchResponseV3(t *testing.T) {
-	item := offsetFetchResponseV3{
+	item := OffsetFetchResponseV3{
 		ThrottleTimeMS: 1,
-		Responses: []offsetFetchResponseV3Response{
+		Responses: []OffsetFetchResponseV3Response{
 			{
 				Topic: "a",
-				PartitionResponses: []offsetFetchResponseV3PartitionResponse{
+				PartitionResponses: []OffsetFetchResponseV3PartitionResponse{
 					{
 						Partition: 2,
 						Offset:    3,
@@ -31,7 +31,7 @@ func TestOffsetFetchResponseV3(t *testing.T) {
 	item.writeTo(w)
 	w.Flush()
 
-	var found offsetFetchResponseV3
+	var found OffsetFetchResponseV3
 	remain, err := (&found).readFrom(bufio.NewReader(buf), buf.Len())
 	if err != nil {
 		t.Error(err)

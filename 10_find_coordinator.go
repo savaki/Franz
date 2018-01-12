@@ -7,7 +7,7 @@ import (
 // FindCoordinatorRequestV1 requests the coordinator for the specified group or transaction
 //
 // See http://kafka.apache.org/protocol.html#The_Messages_FindCoordinator
-type findCoordinatorRequestV1 struct {
+type FindCoordinatorRequestV1 struct {
 	// CoordinatorKey holds id to use for finding the coordinator (for groups, this is
 	// the groupId, for transactional producers, this is the transactional id)
 	CoordinatorKey string
@@ -16,16 +16,16 @@ type findCoordinatorRequestV1 struct {
 	CoordinatorType int8
 }
 
-func (t findCoordinatorRequestV1) size() int32 {
+func (t FindCoordinatorRequestV1) size() int32 {
 	return sizeofString(t.CoordinatorKey) + sizeof(t.CoordinatorType)
 }
 
-func (t findCoordinatorRequestV1) writeTo(w *bufio.Writer) {
+func (t FindCoordinatorRequestV1) writeTo(w *bufio.Writer) {
 	writeString(w, t.CoordinatorKey)
 	writeInt8(w, t.CoordinatorType)
 }
 
-type findCoordinatorResponseCoordinatorV1 struct {
+type FindCoordinatorResponseV1Coordinator struct {
 	// NodeID holds the broker id.
 	NodeID int32
 
@@ -36,19 +36,19 @@ type findCoordinatorResponseCoordinatorV1 struct {
 	Port int32
 }
 
-func (t findCoordinatorResponseCoordinatorV1) size() int32 {
+func (t FindCoordinatorResponseV1Coordinator) size() int32 {
 	return sizeofInt32(t.NodeID) +
 		sizeofString(t.Host) +
 		sizeofInt32(t.Port)
 }
 
-func (t findCoordinatorResponseCoordinatorV1) writeTo(w *bufio.Writer) {
+func (t FindCoordinatorResponseV1Coordinator) writeTo(w *bufio.Writer) {
 	writeInt32(w, t.NodeID)
 	writeString(w, t.Host)
 	writeInt32(w, t.Port)
 }
 
-func (t *findCoordinatorResponseCoordinatorV1) readFrom(r *bufio.Reader, size int) (remain int, err error) {
+func (t *FindCoordinatorResponseV1Coordinator) readFrom(r *bufio.Reader, size int) (remain int, err error) {
 	if remain, err = readInt32(r, size, &t.NodeID); err != nil {
 		return
 	}
@@ -61,7 +61,7 @@ func (t *findCoordinatorResponseCoordinatorV1) readFrom(r *bufio.Reader, size in
 	return
 }
 
-type findCoordinatorResponseV1 struct {
+type FindCoordinatorResponseV1 struct {
 	// ThrottleTimeMS holds the duration in milliseconds for which the request
 	// was throttled due to quota violation (Zero if the request did not violate
 	// any quota)
@@ -74,24 +74,24 @@ type findCoordinatorResponseV1 struct {
 	ErrorMessage string
 
 	// Coordinator holds host and port information for the coordinator
-	Coordinator findCoordinatorResponseCoordinatorV1
+	Coordinator FindCoordinatorResponseV1Coordinator
 }
 
-func (t findCoordinatorResponseV1) size() int32 {
+func (t FindCoordinatorResponseV1) size() int32 {
 	return sizeofInt32(t.ThrottleTimeMS) +
 		sizeofInt16(t.ErrorCode) +
 		sizeofString(t.ErrorMessage) +
 		t.Coordinator.size()
 }
 
-func (t findCoordinatorResponseV1) writeTo(w *bufio.Writer) {
+func (t FindCoordinatorResponseV1) writeTo(w *bufio.Writer) {
 	writeInt32(w, t.ThrottleTimeMS)
 	writeInt16(w, t.ErrorCode)
 	writeString(w, t.ErrorMessage)
 	t.Coordinator.writeTo(w)
 }
 
-func (t *findCoordinatorResponseV1) readFrom(r *bufio.Reader, size int) (remain int, err error) {
+func (t *FindCoordinatorResponseV1) readFrom(r *bufio.Reader, size int) (remain int, err error) {
 	if remain, err = readInt32(r, size, &t.ThrottleTimeMS); err != nil {
 		return
 	}

@@ -8,16 +8,16 @@ import (
 )
 
 func TestDescribeGroupsResponseV1(t *testing.T) {
-	item := describeGroupsResponseV1{
+	item := DescribeGroupsResponseV1{
 		ThrottleTimeMS: 1,
-		Groups: []describeGroupsResponseGroupV1{
+		Groups: []DescribeGroupsResponseV1Group{
 			{
 				ErrorCode:    2,
 				GroupID:      "a",
 				State:        "b",
 				ProtocolType: "c",
 				Protocol:     "d",
-				Members: []describeGroupsResponseMemberV1{
+				Members: []DescribeGroupsResponseV1Member{
 					{
 						MemberID:          "e",
 						ClientID:          "f",
@@ -35,7 +35,7 @@ func TestDescribeGroupsResponseV1(t *testing.T) {
 	item.writeTo(w)
 	w.Flush()
 
-	var found describeGroupsResponseV1
+	var found DescribeGroupsResponseV1
 	remain, err := (&found).readFrom(bufio.NewReader(buf), buf.Len())
 	if err != nil {
 		t.Error(err)

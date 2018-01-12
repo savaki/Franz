@@ -8,9 +8,9 @@ import (
 )
 
 func TestListGroupsResponseV1(t *testing.T) {
-	item := listGroupsResponseV1{
+	item := ListGroupsResponseV1{
 		ErrorCode: 2,
-		Groups: []ListGroupsResponseGroupV1{
+		Groups: []ListGroupsResponseV1Group{
 			{
 				GroupID:      "a",
 				ProtocolType: "b",
@@ -23,7 +23,7 @@ func TestListGroupsResponseV1(t *testing.T) {
 	item.writeTo(w)
 	w.Flush()
 
-	var found listGroupsResponseV1
+	var found ListGroupsResponseV1
 	remain, err := (&found).readFrom(bufio.NewReader(buf), buf.Len())
 	if err != nil {
 		t.Error(err)
