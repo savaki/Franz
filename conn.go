@@ -408,7 +408,7 @@ func (c *Conn) RemoteAddr() net.Addr {
 // be in an unrecoverable state.
 //
 // A zero value for t means I/O operations will not time out.
-func (c *Conn) SetDeadline(t time.Time) error {
+func (c *Conn) hideSetDeadline(t time.Time) error {
 	c.rdeadline.setDeadline(t)
 	c.wdeadline.setDeadline(t)
 	return nil
@@ -417,7 +417,7 @@ func (c *Conn) SetDeadline(t time.Time) error {
 // SetReadDeadline sets the deadline for future Read calls and any
 // currently-blocked Read call.
 // A zero value for t means Read will not time out.
-func (c *Conn) SetReadDeadline(t time.Time) error {
+func (c *Conn) hideSetReadDeadline(t time.Time) error {
 	c.rdeadline.setDeadline(t)
 	return nil
 }
@@ -427,7 +427,7 @@ func (c *Conn) SetReadDeadline(t time.Time) error {
 // Even if write times out, it may return n > 0, indicating that some of the
 // data was successfully written.
 // A zero value for t means Write will not time out.
-func (c *Conn) SetWriteDeadline(t time.Time) error {
+func (c *Conn) hideSetWriteDeadline(t time.Time) error {
 	c.wdeadline.setDeadline(t)
 	return nil
 }
@@ -437,7 +437,7 @@ func (c *Conn) SetWriteDeadline(t time.Time) error {
 // to interpret it.
 //
 // See Seek for more details about the offset and whence values.
-func (c *Conn) Offset() (offset int64, whence int) {
+func (c *Conn) hideOffset() (offset int64, whence int) {
 	c.mutex.Lock()
 	offset = c.offset
 	c.mutex.Unlock()
@@ -458,7 +458,7 @@ func (c *Conn) Offset() (offset int64, whence int) {
 // whence: 0 means relative to the first offset, 1 means relative to the current
 // offset, and 2 means relative to the last offset.
 // The method returns the new absoluate offset of the connection.
-func (c *Conn) Seek(offset int64, whence int) (int64, error) {
+func (c *Conn) hideSeek(offset int64, whence int) (int64, error) {
 	switch whence {
 	case 0, 1, 2:
 	default:
@@ -474,7 +474,7 @@ func (c *Conn) Seek(offset int64, whence int) (int64, error) {
 		}
 	}
 
-	first, last, err := c.ReadOffsets()
+	first, last, err := c.hideReadOffsets()
 	if err != nil {
 		return 0, err
 	}
@@ -512,8 +512,8 @@ func (c *Conn) Seek(offset int64, whence int) (int64, error) {
 //
 // This method is provided to satisfies the net.Conn interface but is much less
 // efficient than using the more general purpose ReadBatch method.
-func (c *Conn) Read(b []byte) (int, error) {
-	batch := c.ReadBatch(1, len(b))
+func (c *Conn) hideRead(b []byte) (int, error) {
+	batch := c.hideReadBatch(1, len(b))
 	n, err := batch.Read(b)
 	return n, coalesceErrors(silentEOF(err), batch.Close())
 }
@@ -533,8 +533,8 @@ func (c *Conn) Read(b []byte) (int, error) {
 //
 // This method is provided for convenience purposes but is much less efficient
 // than using the more general purpose ReadBatch method.
-func (c *Conn) ReadMessage(maxBytes int) (Message, error) {
-	batch := c.ReadBatch(1, maxBytes)
+func (c *Conn) hideReadMessage(maxBytes int) (Message, error) {
+	batch := c.hideReadBatch(1, maxBytes)
 	msg, err := batch.ReadMessage()
 	return msg, coalesceErrors(silentEOF(err), batch.Close())
 }
@@ -552,7 +552,7 @@ func (c *Conn) ReadMessage(maxBytes int) (Message, error) {
 // A program doesn't specify the number of messages in wants from a batch, but
 // gives the minimum and maximum number of bytes that it wants to receive from
 // the kafka server.
-func (c *Conn) ReadBatch(minBytes int, maxBytes int) *Batch {
+func (c *Conn) hideReadBatch(minBytes int, maxBytes int) *Batch {
 	var adjustedDeadline time.Time
 	var maxFetch = int(c.fetchMaxBytes)
 
@@ -566,7 +566,7 @@ func (c *Conn) ReadBatch(minBytes int, maxBytes int) *Batch {
 		return &Batch{err: fmt.Errorf("kafka.(*Conn).ReadBatch: minBytes (%d) > maxBytes (%d)", minBytes, maxBytes)}
 	}
 
-	offset, err := c.Seek(c.Offset())
+	offset, err := c.hideSeek(c.hideOffset())
 	if err != nil {
 		return &Batch{err: err}
 	}
@@ -614,30 +614,30 @@ func (c *Conn) ReadBatch(minBytes int, maxBytes int) *Batch {
 
 // ReadOffset returns the offset of the first message with a timestamp equal or
 // greater to t.
-func (c *Conn) ReadOffset(t time.Time) (int64, error) {
+func (c *Conn) hideReadOffset(t time.Time) (int64, error) {
 	return c.readOffset(timestamp(t))
 }
 
 // ReadFirstOffset returns the first offset available on the connection.
-func (c *Conn) ReadFirstOffset() (int64, error) {
+func (c *Conn) hideReadFirstOffset() (int64, error) {
 	return c.readOffset(-2)
 }
 
 // ReadLastOffset returns the last offset available on the connection.
-func (c *Conn) ReadLastOffset() (int64, error) {
+func (c *Conn) hideReadLastOffset() (int64, error) {
 	return c.readOffset(-1)
 }
 
 // ReadOffsets returns the absolute first and last offsets of the topic used by
 // the connection.
-func (c *Conn) ReadOffsets() (first int64, last int64, err error) {
+func (c *Conn) hideReadOffsets() (first int64, last int64, err error) {
 	// We have to submit two different requests to fetch the first and last
 	// offsets because kafka refuses requests that ask for multiple offsets
 	// on the same topic and partition.
-	if first, err = c.ReadFirstOffset(); err != nil {
+	if first, err = c.hideReadFirstOffset(); err != nil {
 		return
 	}
-	if last, err = c.ReadLastOffset(); err != nil {
+	if last, err = c.hideReadLastOffset(); err != nil {
 		first = 0 // don't leak the value on error
 		return
 	}
@@ -684,7 +684,7 @@ func (c *Conn) readOffset(t int64) (offset int64, err error) {
 // If the method is called with no topic, it uses the topic configured on the
 // connection. If there are none, the method fetches all partitions of the kafka
 // cluster.
-func (c *Conn) ReadPartitions(topics ...string) (partitions []Partition, err error) {
+func (c *Conn) hideReadPartitions(topics ...string) (partitions []Partition, err error) {
 	defaultTopics := [...]string{c.topic}
 
 	if len(topics) == 0 && len(c.topic) != 0 {
@@ -750,14 +750,14 @@ func (c *Conn) ReadPartitions(topics ...string) (partitions []Partition, err err
 //
 // This method is exposed to satisfy the net.Conn interface but is less efficient
 // than the more general purpose WriteMessages method.
-func (c *Conn) Write(b []byte) (int, error) {
-	return c.WriteMessages(Message{Value: b})
+func (c *Conn) hideWrite(b []byte) (int, error) {
+	return c.hideWriteMessages(Message{Value: b})
 }
 
 // WriteMessages writes a batch of messages to the connection's topic and
 // partition, returning the number of bytes written. The write is an atomic
 // operation, it either fully succeeds or fails.
-func (c *Conn) WriteMessages(msgs ...Message) (int, error) {
+func (c *Conn) hideWriteMessages(msgs ...Message) (int, error) {
 	if len(msgs) == 0 {
 		return 0, nil
 	}
@@ -832,7 +832,7 @@ func (c *Conn) WriteMessages(msgs ...Message) (int, error) {
 
 // SetRequiredAcks sets the number of acknowledges from replicas that the
 // connection requests when producing messages.
-func (c *Conn) SetRequiredAcks(n int) error {
+func (c *Conn) hideSetRequiredAcks(n int) error {
 	switch n {
 	case -1, 1:
 		atomic.StoreInt32(&c.requiredAcks, int32(n))

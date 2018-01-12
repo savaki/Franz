@@ -144,7 +144,7 @@ func (d *Dialer) LookupLeader(ctx context.Context, network string, address strin
 				sleep(ctx, backoff(attempt, 100*time.Millisecond, 10*time.Second))
 			}
 
-			partitions, err := c.ReadPartitions(topic)
+			partitions, err := c.hideReadPartitions(topic)
 			if err != nil {
 				if isTemporary(err) {
 					continue
@@ -186,7 +186,7 @@ func (d *Dialer) LookupPartitions(ctx context.Context, network string, address s
 	errch := make(chan error, 1)
 
 	go func() {
-		if prt, err := conn.ReadPartitions(topic); err != nil {
+		if prt, err := conn.hideReadPartitions(topic); err != nil {
 			errch <- err
 		} else {
 			prtch <- prt

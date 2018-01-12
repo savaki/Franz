@@ -28,8 +28,8 @@ type connPipe struct {
 
 func (c *connPipe) Close() error {
 	b := [1]byte{} // marker that the connection has been closed
-	c.wconn.SetWriteDeadline(time.Time{})
-	c.wconn.Write(b[:])
+	c.wconn.hideSetWriteDeadline(time.Time{})
+	c.wconn.hideWrite(b[:])
 	c.wconn.Close()
 	c.rconn.Close()
 	return nil
@@ -41,7 +41,7 @@ func (c *connPipe) Read(b []byte) (int, error) {
 	if t := c.rconn.readDeadline(); !t.IsZero() && t.Sub(time.Now()) <= (10*time.Millisecond) {
 		return 0, &timeout{}
 	}
-	n, err := c.rconn.Read(b)
+	n, err := c.rconn.hideRead(b)
 	if n == 1 && b[0] == 0 {
 		c.rconn.Close()
 		n, err = 0, io.EOF
@@ -65,7 +65,7 @@ func (c *connPipe) Write(b []byte) (int, error) {
 		return 0, &timeout{}
 	}
 
-	return c.wconn.Write(b)
+	return c.wconn.hideWrite(b)
 }
 
 func (c *connPipe) LocalAddr() net.Addr {
@@ -77,17 +77,17 @@ func (c *connPipe) RemoteAddr() net.Addr {
 }
 
 func (c *connPipe) SetDeadline(t time.Time) error {
-	c.rconn.SetDeadline(t)
-	c.wconn.SetDeadline(t)
+	c.rconn.hideSetDeadline(t)
+	c.wconn.hideSetDeadline(t)
 	return nil
 }
 
 func (c *connPipe) SetReadDeadline(t time.Time) error {
-	return c.rconn.SetReadDeadline(t)
+	return c.rconn.hideSetReadDeadline(t)
 }
 
 func (c *connPipe) SetWriteDeadline(t time.Time) error {
-	return c.wconn.SetWriteDeadline(t)
+	return c.wconn.hideSetWriteDeadline(t)
 }
 
 func init() {
@@ -299,7 +299,7 @@ func testConnClose(t *testing.T, conn *Conn) {
 }
 
 func testConnFirstOffset(t *testing.T, conn *Conn) {
-	offset, whence := conn.Offset()
+	offset, whence := conn.hideOffset()
 
 	if offset != 0 && whence != 0 {
 		t.Error("bad first offset:", offset, whence)
@@ -308,7 +308,7 @@ func testConnFirstOffset(t *testing.T, conn *Conn) {
 
 func testConnWrite(t *testing.T, conn *Conn) {
 	b := []byte("Hello World!")
-	n, err := conn.Write(b)
+	n, err := conn.hideWrite(b)
 
 	if err != nil {
 		t.Error(err)
@@ -322,7 +322,7 @@ func testConnWrite(t *testing.T, conn *Conn) {
 func testConnCloseAndWrite(t *testing.T, conn *Conn) {
 	conn.Close()
 
-	switch _, err := conn.Write([]byte("Hello World!")); err.(type) {
+	switch _, err := conn.hideWrite([]byte("Hello World!")); err.(type) {
 	case *net.OpError:
 	default:
 		t.Error(err)
@@ -331,12 +331,12 @@ func testConnCloseAndWrite(t *testing.T, conn *Conn) {
 
 func testConnSeekFirstOffset(t *testing.T, conn *Conn) {
 	for i := 0; i != 10; i++ {
-		if _, err := conn.Write([]byte(strconv.Itoa(i))); err != nil {
+		if _, err := conn.hideWrite([]byte(strconv.Itoa(i))); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	offset, err := conn.Seek(0, 0)
+	offset, err := conn.hideSeek(0, 0)
 	if err != nil {
 		t.Error(err)
 	}
@@ -348,12 +348,12 @@ func testConnSeekFirstOffset(t *testing.T, conn *Conn) {
 
 func testConnSeekLastOffset(t *testing.T, conn *Conn) {
 	for i := 0; i != 10; i++ {
-		if _, err := conn.Write([]byte(strconv.Itoa(i))); err != nil {
+		if _, err := conn.hideWrite([]byte(strconv.Itoa(i))); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	offset, err := conn.Seek(0, 2)
+	offset, err := conn.hideSeek(0, 2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -365,12 +365,12 @@ func testConnSeekLastOffset(t *testing.T, conn *Conn) {
 
 func testConnSeekRandomOffset(t *testing.T, conn *Conn) {
 	for i := 0; i != 10; i++ {
-		if _, err := conn.Write([]byte(strconv.Itoa(i))); err != nil {
+		if _, err := conn.hideWrite([]byte(strconv.Itoa(i))); err != nil {
 			t.Fatal(err)
 		}
 	}
 
-	offset, err := conn.Seek(3, 1)
+	offset, err := conn.hideSeek(3, 1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -382,7 +382,7 @@ func testConnSeekRandomOffset(t *testing.T, conn *Conn) {
 
 func testConnWriteReadSequentially(t *testing.T, conn *Conn) {
 	for i := 0; i != 10; i++ {
-		if _, err := conn.Write([]byte(strconv.Itoa(i))); err != nil {
+		if _, err := conn.hideWrite([]byte(strconv.Itoa(i))); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -390,7 +390,7 @@ func testConnWriteReadSequentially(t *testing.T, conn *Conn) {
 	b := make([]byte, 128)
 
 	for i := 0; i != 10; i++ {
-		n, err := conn.Read(b)
+		n, err := conn.hideRead(b)
 		if err != nil {
 			t.Error(err)
 			continue
@@ -405,12 +405,12 @@ func testConnWriteReadSequentially(t *testing.T, conn *Conn) {
 }
 
 func testConnWriteBatchReadSequentially(t *testing.T, conn *Conn) {
-	if _, err := conn.WriteMessages(makeTestSequence(10)...); err != nil {
+	if _, err := conn.hideWriteMessages(makeTestSequence(10)...); err != nil {
 		t.Fatal(err)
 	}
 
 	for i := 0; i != 10; i++ {
-		msg, err := conn.ReadMessage(128)
+		msg, err := conn.hideReadMessage(128)
 		if err != nil {
 			t.Error(err)
 			continue
@@ -425,7 +425,7 @@ func testConnWriteBatchReadSequentially(t *testing.T, conn *Conn) {
 }
 
 func testConnReadWatermarkFromBatch(t *testing.T, conn *Conn) {
-	if _, err := conn.WriteMessages(makeTestSequence(10)...); err != nil {
+	if _, err := conn.hideWriteMessages(makeTestSequence(10)...); err != nil {
 		t.Fatal(err)
 	}
 
@@ -434,7 +434,7 @@ func testConnReadWatermarkFromBatch(t *testing.T, conn *Conn) {
 
 	value := make([]byte, 10e3) // 10 KB
 
-	batch := conn.ReadBatch(minBytes, maxBytes)
+	batch := conn.hideReadBatch(minBytes, maxBytes)
 
 	for i := 0; i < 10; i++ {
 		_, err := batch.Read(value)
@@ -686,7 +686,7 @@ func testConnListGroupsReturnsGroups(t *testing.T, conn *Conn) {
 
 func testConnFetchAndCommitOffsets(t *testing.T, conn *Conn) {
 	const N = 10
-	if _, err := conn.WriteMessages(makeTestSequence(N)...); err != nil {
+	if _, err := conn.hideWriteMessages(makeTestSequence(N)...); err != nil {
 		t.Fatal(err)
 	}
 
@@ -765,7 +765,7 @@ func testConnWriteReadConcurrently(t *testing.T, conn *Conn) {
 	go func() {
 		defer close(done)
 		for _, msg := range msgs {
-			if _, err := conn.Write([]byte(msg)); err != nil {
+			if _, err := conn.hideWrite([]byte(msg)); err != nil {
 				t.Error(err)
 			}
 		}
@@ -774,7 +774,7 @@ func testConnWriteReadConcurrently(t *testing.T, conn *Conn) {
 	b := make([]byte, 128)
 
 	for i := 0; i != N; i++ {
-		n, err := conn.Read(b)
+		n, err := conn.hideRead(b)
 		if err != nil {
 			t.Error(err)
 		}
@@ -787,7 +787,7 @@ func testConnWriteReadConcurrently(t *testing.T, conn *Conn) {
 }
 
 func testConnReadShortBuffer(t *testing.T, conn *Conn) {
-	if _, err := conn.Write([]byte("Hello World!")); err != nil {
+	if _, err := conn.hideWrite([]byte("Hello World!")); err != nil {
 		t.Fatal(err)
 	}
 
@@ -799,7 +799,7 @@ func testConnReadShortBuffer(t *testing.T, conn *Conn) {
 		b[2] = 0
 		b[3] = 0
 
-		n, err := conn.Read(b)
+		n, err := conn.hideRead(b)
 		if err != io.ErrShortBuffer {
 			t.Error("bad error:", i, err)
 		}
@@ -818,8 +818,8 @@ func testConnReadEmptyWithDeadline(t *testing.T, conn *Conn) {
 	start := time.Now()
 	deadline := start.Add(100 * time.Millisecond)
 
-	conn.SetReadDeadline(deadline)
-	n, err := conn.Read(b)
+	conn.hideSetReadDeadline(deadline)
+	n, err := conn.hideRead(b)
 
 	if n != 0 {
 		t.Error("bad byte count:", n)
@@ -874,13 +874,13 @@ func BenchmarkConn(b *testing.B) {
 	conn, _ := DialLeader(context.Background(), "tcp", "localhost:9092", topic, 0)
 	defer conn.Close()
 
-	if _, err := conn.WriteMessages(msgs...); err != nil {
+	if _, err := conn.hideWriteMessages(msgs...); err != nil {
 		b.Fatal(err)
 	}
 
 	for _, benchmark := range benchmarks {
 		b.Run(benchmark.scenario, func(b *testing.B) {
-			if _, err := conn.Seek(0, 0); err != nil {
+			if _, err := conn.hideSeek(0, 0); err != nil {
 				b.Error(err)
 				return
 			}
@@ -891,7 +891,7 @@ func BenchmarkConn(b *testing.B) {
 
 func benchmarkConnSeek(b *testing.B, conn *Conn, _ []byte) {
 	for i := 0; i != b.N; i++ {
-		if _, err := conn.Seek(int64(i%benchmarkMessageCount), 1); err != nil {
+		if _, err := conn.hideSeek(int64(i%benchmarkMessageCount), 1); err != nil {
 			b.Error(err)
 			return
 		}
@@ -904,13 +904,13 @@ func benchmarkConnRead(b *testing.B, conn *Conn, a []byte) {
 
 	for i != b.N {
 		if (i % benchmarkMessageCount) == 0 {
-			if _, err := conn.Seek(0, 0); err != nil {
+			if _, err := conn.hideSeek(0, 0); err != nil {
 				b.Error(err)
 				return
 			}
 		}
 
-		c, err := conn.Read(a)
+		c, err := conn.hideRead(a)
 		if err != nil {
 			b.Error(err)
 			return
@@ -927,7 +927,7 @@ func benchmarkConnReadBatch(b *testing.B, conn *Conn, a []byte) {
 	const minBytes = 1
 	const maxBytes = 10e6 // 10 MB
 
-	batch := conn.ReadBatch(minBytes, maxBytes)
+	batch := conn.hideReadBatch(minBytes, maxBytes)
 	i := 0
 	n := 0
 
@@ -938,11 +938,11 @@ func benchmarkConnReadBatch(b *testing.B, conn *Conn, a []byte) {
 				b.Error(err)
 				return
 			}
-			if _, err = conn.Seek(0, 0); err != nil {
+			if _, err = conn.hideSeek(0, 0); err != nil {
 				b.Error(err)
 				return
 			}
-			batch = conn.ReadBatch(minBytes, maxBytes)
+			batch = conn.hideReadBatch(minBytes, maxBytes)
 		}
 		n += c
 		i++
@@ -954,7 +954,7 @@ func benchmarkConnReadBatch(b *testing.B, conn *Conn, a []byte) {
 
 func benchmarkConnReadOffsets(b *testing.B, conn *Conn, _ []byte) {
 	for i := 0; i != b.N; i++ {
-		_, _, err := conn.ReadOffsets()
+		_, _, err := conn.hideReadOffsets()
 		if err != nil {
 			b.Error(err)
 			return
@@ -968,7 +968,7 @@ func benchmarkConnWrite(b *testing.B, conn *Conn, _ []byte) {
 	i := 0
 
 	for i != b.N {
-		c, err := conn.Write(a)
+		c, err := conn.hideWrite(a)
 		if err != nil {
 			b.Error(err)
 			return
