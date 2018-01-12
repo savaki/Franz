@@ -15,6 +15,17 @@ import (
 )
 
 var (
+	poolMetadataResponseV0 = &sync.Pool{
+		New: func() interface{} {
+			return &MetadataResponseV0{
+				Brokers: make([]*MetadataResponseV0Broker, 0, 3),
+				Topics:  make([]*MetadataResponseV0Topic, 0, 16),
+			}
+		},
+	}
+)
+
+var (
 	errInvalidWriteTopic     = errors.New("writes must NOT set Topic on kafka.Message")
 	errInvalidWritePartition = errors.New("writes must NOT set Partition on kafka.Message")
 )
@@ -327,8 +338,8 @@ func (c *Conn) offsetCommit(request offsetCommitRequestV3) (offsetCommitResponse
 // offsetFetch fetches the offsets for the specified topic partitions
 //
 // See http://kafka.apache.org/protocol.html#The_Messages_OffsetFetch
-func (c *Conn) MetadataV0(request MetadataRequestV0) (MetadataResponseV0, error) {
-	var response MetadataResponseV0
+func (c *Conn) MetadataV0(request MetadataRequestV0) (*MetadataResponseV0, error) {
+	response := poolMetadataResponseV0.Get().(*MetadataResponseV0)
 
 	err := c.readOperation(
 		func(deadline time.Time, id int32) error {
@@ -336,16 +347,16 @@ func (c *Conn) MetadataV0(request MetadataRequestV0) (MetadataResponseV0, error)
 		},
 		func(deadline time.Time, size int) error {
 			return expectZeroSize(func() (remain int, err error) {
-				return (&response).readFrom(&c.rbuf, size)
+				return response.readFrom(&c.rbuf, size)
 			}())
 		},
 	)
 	if err != nil {
-		return MetadataResponseV0{}, err
+		return nil, err
 	}
 	for _, topic := range response.Topics {
 		if topic.TopicErrorCode != 0 {
-			return MetadataResponseV0{}, Error(topic.TopicErrorCode)
+			return nil, Error(topic.TopicErrorCode)
 		}
 	}
 
@@ -719,55 +730,47 @@ func (c *Conn) hideReadPartitions(topics ...string) (partitions []Partition, err
 		topics = defaultTopics[:]
 	}
 
-	err = c.readOperation(
-		func(deadline time.Time, id int32) error {
-			return c.writeRequest(metadataRequest, v0, id, MetadataRequestV0(topics))
-		},
-		func(deadline time.Time, size int) error {
-			var res MetadataResponseV0
+	res, err := c.MetadataV0(MetadataRequestV0(topics))
+	if err != nil {
+		return nil, err
+	}
 
-			if err := c.readResponse(size, &res); err != nil {
-				return err
-			}
+	brokers := make(map[int32]Broker, len(res.Brokers))
+	for _, b := range res.Brokers {
+		brokers[b.NodeID] = Broker{
+			Host: b.Host,
+			Port: int(b.Port),
+			ID:   int(b.NodeID),
+		}
+	}
 
-			brokers := make(map[int32]Broker, len(res.Brokers))
-			for _, b := range res.Brokers {
-				brokers[b.NodeID] = Broker{
-					Host: b.Host,
-					Port: int(b.Port),
-					ID:   int(b.NodeID),
-				}
-			}
+	makeBrokers := func(ids ...int32) []Broker {
+		b := make([]Broker, len(ids))
+		for i, id := range ids {
+			b[i] = brokers[id]
+		}
+		return b
+	}
 
-			makeBrokers := func(ids ...int32) []Broker {
-				b := make([]Broker, len(ids))
-				for i, id := range ids {
-					b[i] = brokers[id]
-				}
-				return b
-			}
+	for _, t := range res.Topics {
+		if t.TopicErrorCode != 0 && t.TopicName == c.topic {
+			// We only report errors if they happened for the topic of
+			// the connection, otherwise the topic will simply have no
+			// partitions in the result set.
+			return nil, Error(t.TopicErrorCode)
+		}
+		for _, p := range t.Partitions {
+			partitions = append(partitions, Partition{
+				Topic:    t.TopicName,
+				Leader:   brokers[p.Leader],
+				Replicas: makeBrokers(p.Replicas...),
+				Isr:      makeBrokers(p.Isr...),
+				ID:       int(p.PartitionID),
+			})
+		}
+	}
 
-			for _, t := range res.Topics {
-				if t.TopicErrorCode != 0 && t.TopicName == c.topic {
-					// We only report errors if they happened for the topic of
-					// the connection, otherwise the topic will simply have no
-					// partitions in the result set.
-					return Error(t.TopicErrorCode)
-				}
-				for _, p := range t.Partitions {
-					partitions = append(partitions, Partition{
-						Topic:    t.TopicName,
-						Leader:   brokers[p.Leader],
-						Replicas: makeBrokers(p.Replicas...),
-						Isr:      makeBrokers(p.Isr...),
-						ID:       int(p.PartitionID),
-					})
-				}
-			}
-			return nil
-		},
-	)
-	return
+	return partitions, nil
 }
 
 // Write writes a message to the kafka broker that this connection was

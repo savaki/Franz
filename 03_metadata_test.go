@@ -11,14 +11,14 @@ import (
 
 func TestMetadataResponseV0(t *testing.T) {
 	item := MetadataResponseV0{
-		Brokers: []MetadataResponseV0Broker{
+		Brokers: []*MetadataResponseV0Broker{
 			{
 				NodeID: 1,
 				Host:   "a",
 				Port:   2,
 			},
 		},
-		Topics: []MetadataResponseV0Topic{
+		Topics: []*MetadataResponseV0Topic{
 			{
 				TopicErrorCode: 3,
 				TopicName:      "b",
@@ -62,7 +62,8 @@ func BenchmarkMetadata(t *testing.B) {
 	defer conn.Close()
 
 	for i := 0; i < t.N; i++ {
-		_, err = conn.MetadataV0(nil)
+		resp, err := conn.MetadataV0(MetadataRequestV0{})
 		assert.Nil(t, err)
+		resp.Free()
 	}
 }

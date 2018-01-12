@@ -38,22 +38,6 @@ func TestProtocol(t *testing.T) {
 
 		MetadataRequestV0{"A", "B", "C"},
 
-		MetadataResponseV0{
-			Brokers: []MetadataResponseV0Broker{
-				{NodeID: 1, Host: "localhost", Port: 9001},
-				{NodeID: 2, Host: "localhost", Port: 9002},
-			},
-			Topics: []MetadataResponseV0Topic{
-				{TopicErrorCode: 0, Partitions: []MetadataResponseV0Partition{{
-					PartitionErrorCode: 0,
-					PartitionID:        1,
-					Leader:             2,
-					Replicas:           []int32{1},
-					Isr:                []int32{1},
-				}}},
-			},
-		},
-
 		listOffsetRequestV1{
 			ReplicaID: 1,
 			Topics: []listOffsetRequestTopicV1{

@@ -2,6 +2,22 @@ package franz
 
 import (
 	"bufio"
+	"sync"
+)
+
+var (
+	poolMetadataResponseV0Broker = &sync.Pool{
+		New: func() interface{} {
+			return &MetadataResponseV0Broker{}
+		},
+	}
+	poolMetadataResponseV0Topic = &sync.Pool{
+		New: func() interface{} {
+			return &MetadataResponseV0Topic{
+				Partitions: make([]MetadataResponseV0Partition, 0, 8),
+			}
+		},
+	}
 )
 
 type MetadataRequestV0 []string
@@ -15,8 +31,24 @@ func (r MetadataRequestV0) writeTo(w *bufio.Writer) {
 }
 
 type MetadataResponseV0 struct {
-	Brokers []MetadataResponseV0Broker
-	Topics  []MetadataResponseV0Topic
+	Brokers []*MetadataResponseV0Broker
+	Topics  []*MetadataResponseV0Topic
+}
+
+func (t *MetadataResponseV0) Free() {
+	for index, item := range t.Brokers {
+		item.Free()
+		t.Brokers[index] = nil
+	}
+	t.Brokers = t.Brokers[:0]
+
+	for index, item := range t.Topics {
+		item.Free()
+		t.Topics[index] = nil
+	}
+	t.Topics = t.Topics[:0]
+
+	poolMetadataResponseV0.Put(t)
 }
 
 func (t MetadataResponseV0) size() int32 {
@@ -32,8 +64,8 @@ func (t MetadataResponseV0) writeTo(w *bufio.Writer) {
 
 func (t *MetadataResponseV0) readFrom(r *bufio.Reader, size int) (remain int, err error) {
 	fnBroker := func(r *bufio.Reader, withSize int) (fnRemain int, fnErr error) {
-		item := MetadataResponseV0Broker{}
-		if fnRemain, fnErr = (&item).readFrom(r, withSize); fnErr != nil {
+		item := poolMetadataResponseV0Broker.Get().(*MetadataResponseV0Broker)
+		if fnRemain, fnErr = item.readFrom(r, withSize); fnErr != nil {
 			return
 		}
 		t.Brokers = append(t.Brokers, item)
@@ -44,8 +76,8 @@ func (t *MetadataResponseV0) readFrom(r *bufio.Reader, size int) (remain int, er
 	}
 
 	fnTopic := func(r *bufio.Reader, withSize int) (fnRemain int, fnErr error) {
-		var item MetadataResponseV0Topic
-		if fnRemain, fnErr = (&item).readFrom(r, withSize); fnErr != nil {
+		item := poolMetadataResponseV0Topic.Get().(*MetadataResponseV0Topic)
+		if fnRemain, fnErr = item.readFrom(r, withSize); fnErr != nil {
 			return
 		}
 		t.Topics = append(t.Topics, item)
@@ -64,24 +96,32 @@ type MetadataResponseV0Broker struct {
 	Port   int32
 }
 
-func (b MetadataResponseV0Broker) size() int32 {
-	return 4 + 4 + sizeofString(b.Host)
+func (t *MetadataResponseV0Broker) Free() {
+	t.NodeID = 0
+	t.Host = ""
+	t.Port = 0
+
+	poolMetadataResponseV0Broker.Put(t)
 }
 
-func (b MetadataResponseV0Broker) writeTo(w *bufio.Writer) {
-	writeInt32(w, b.NodeID)
-	writeString(w, b.Host)
-	writeInt32(w, b.Port)
+func (t MetadataResponseV0Broker) size() int32 {
+	return 4 + 4 + sizeofString(t.Host)
 }
 
-func (b *MetadataResponseV0Broker) readFrom(r *bufio.Reader, size int) (remain int, err error) {
-	if remain, err = readInt32(r, size, &b.NodeID); err != nil {
+func (t MetadataResponseV0Broker) writeTo(w *bufio.Writer) {
+	writeInt32(w, t.NodeID)
+	writeString(w, t.Host)
+	writeInt32(w, t.Port)
+}
+
+func (t *MetadataResponseV0Broker) readFrom(r *bufio.Reader, size int) (remain int, err error) {
+	if remain, err = readInt32(r, size, &t.NodeID); err != nil {
 		return
 	}
-	if remain, err = readString(r, remain, &b.Host); err != nil {
+	if remain, err = readString(r, remain, &t.Host); err != nil {
 		return
 	}
-	if remain, err = readInt32(r, remain, &b.Port); err != nil {
+	if remain, err = readInt32(r, remain, &t.Port); err != nil {
 		return
 	}
 	return
@@ -91,6 +131,14 @@ type MetadataResponseV0Topic struct {
 	TopicErrorCode int16
 	TopicName      string
 	Partitions     []MetadataResponseV0Partition
+}
+
+func (t *MetadataResponseV0Topic) Free() {
+	t.TopicErrorCode = 0
+	t.TopicName = ""
+	t.Partitions = t.Partitions[:0]
+
+	poolMetadataResponseV0Topic.Put(t)
 }
 
 func (t MetadataResponseV0Topic) size() int32 {
