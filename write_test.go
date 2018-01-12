@@ -61,11 +61,11 @@ func testWriteListOffsetRequestV1(t *testing.T) {
 			CorrelationID: testCorrelationID,
 			ClientID:      testClientID,
 		},
-		listOffsetRequestV1{
+		ListOffsetRequestV1{
 			ReplicaID: -1,
-			Topics: []listOffsetRequestTopicV1{{
+			Topics: []ListOffsetRequestV1Topic{{
 				TopicName: testTopic,
-				Partitions: []listOffsetRequestPartitionV1{{
+				Partitions: []ListOffsetRequestV1Partition{{
 					Partition: testPartition,
 					Time:      time,
 				}},

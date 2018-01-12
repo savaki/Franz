@@ -147,6 +147,33 @@ func NewConnWith(conn net.Conn, config ConnConfig) *Conn {
 	return c
 }
 
+func (c *Conn) wipListOffsetsV1(request ListOffsetRequestV1) (ListOffsetResponseV1, error) {
+	var response ListOffsetResponseV1
+
+	err := c.readOperation(
+		func(deadline time.Time, id int32) error {
+			return c.writeRequest(describeGroupsRequest, v1, id, request)
+		},
+		func(deadline time.Time, size int) error {
+			return expectZeroSize(func() (remain int, err error) {
+				return (&response).readFrom(&c.rbuf, size)
+			}())
+		},
+	)
+	if err != nil {
+		return ListOffsetResponseV1{}, err
+	}
+	for _, topic := range response {
+		for _, partition := range topic.Partitions {
+			if partition.ErrorCode != 0 {
+				return ListOffsetResponseV1{}, Error(partition.ErrorCode)
+			}
+		}
+	}
+
+	return response, nil
+}
+
 // describeGroups retrieves the specified groups
 //
 // See http://kafka.apache.org/protocol.html#The_Messages_DescribeGroups
@@ -700,7 +727,7 @@ func (c *Conn) readOffset(t int64) (offset int64, err error) {
 				// Reading the array of partitions, there will be only one
 				// partition which gives the offset we're looking for.
 				return readArrayWith(r, size, func(r *bufio.Reader, size int) (int, error) {
-					var p partitionOffsetV1
+					var p ListOffsetResponseV1Partition
 					size, err := p.readFrom(r, size)
 					if err != nil {
 						return size, err

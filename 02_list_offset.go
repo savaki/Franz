@@ -2,93 +2,97 @@ package franz
 
 import "bufio"
 
-type listOffsetRequestV1 struct {
+type ListOffsetRequestV1 struct {
 	ReplicaID int32
-	Topics    []listOffsetRequestTopicV1
+	Topics    []ListOffsetRequestV1Topic
 }
 
-func (r listOffsetRequestV1) size() int32 {
+func (r ListOffsetRequestV1) size() int32 {
 	return 4 + sizeofArray(len(r.Topics), func(i int) int32 { return r.Topics[i].size() })
 }
 
-func (r listOffsetRequestV1) writeTo(w *bufio.Writer) {
+func (r ListOffsetRequestV1) writeTo(w *bufio.Writer) {
 	writeInt32(w, r.ReplicaID)
 	writeArray(w, len(r.Topics), func(i int) { r.Topics[i].writeTo(w) })
 }
 
-type listOffsetRequestTopicV1 struct {
+type ListOffsetRequestV1Topic struct {
 	TopicName  string
-	Partitions []listOffsetRequestPartitionV1
+	Partitions []ListOffsetRequestV1Partition
 }
 
-func (t listOffsetRequestTopicV1) size() int32 {
+func (t ListOffsetRequestV1Topic) size() int32 {
 	return sizeofString(t.TopicName) +
 		sizeofArray(len(t.Partitions), func(i int) int32 { return t.Partitions[i].size() })
 }
 
-func (t listOffsetRequestTopicV1) writeTo(w *bufio.Writer) {
+func (t ListOffsetRequestV1Topic) writeTo(w *bufio.Writer) {
 	writeString(w, t.TopicName)
 	writeArray(w, len(t.Partitions), func(i int) { t.Partitions[i].writeTo(w) })
 }
 
-type listOffsetRequestPartitionV1 struct {
+type ListOffsetRequestV1Partition struct {
 	Partition int32
 	Time      int64
 }
 
-func (p listOffsetRequestPartitionV1) size() int32 {
+func (p ListOffsetRequestV1Partition) size() int32 {
 	return 4 + 8
 }
 
-func (p listOffsetRequestPartitionV1) writeTo(w *bufio.Writer) {
+func (p ListOffsetRequestV1Partition) writeTo(w *bufio.Writer) {
 	writeInt32(w, p.Partition)
 	writeInt64(w, p.Time)
 }
 
-type listOffsetResponseV1 []listOffsetResponseTopicV1
+type ListOffsetResponseV1 []ListOffsetResponseV1Topic
 
-func (r listOffsetResponseV1) size() int32 {
-	return sizeofArray(len(r), func(i int) int32 { return r[i].size() })
+func (t ListOffsetResponseV1) size() int32 {
+	return sizeofArray(len(t), func(i int) int32 { return t[i].size() })
 }
 
-func (r listOffsetResponseV1) writeTo(w *bufio.Writer) {
-	writeArray(w, len(r), func(i int) { r[i].writeTo(w) })
+func (t ListOffsetResponseV1) writeTo(w *bufio.Writer) {
+	writeArray(w, len(t), func(i int) { t[i].writeTo(w) })
 }
 
-type listOffsetResponseTopicV1 struct {
-	TopicName        string
-	PartitionOffsets []partitionOffsetV1
+func (t *ListOffsetResponseV1) readFrom(r *bufio.Reader, size int) (remain int, err error) {
+	return 0, nil
 }
 
-func (t listOffsetResponseTopicV1) size() int32 {
+type ListOffsetResponseV1Topic struct {
+	TopicName  string
+	Partitions []ListOffsetResponseV1Partition
+}
+
+func (t ListOffsetResponseV1Topic) size() int32 {
 	return sizeofString(t.TopicName) +
-		sizeofArray(len(t.PartitionOffsets), func(i int) int32 { return t.PartitionOffsets[i].size() })
+		sizeofArray(len(t.Partitions), func(i int) int32 { return t.Partitions[i].size() })
 }
 
-func (t listOffsetResponseTopicV1) writeTo(w *bufio.Writer) {
+func (t ListOffsetResponseV1Topic) writeTo(w *bufio.Writer) {
 	writeString(w, t.TopicName)
-	writeArray(w, len(t.PartitionOffsets), func(i int) { t.PartitionOffsets[i].writeTo(w) })
+	writeArray(w, len(t.Partitions), func(i int) { t.Partitions[i].writeTo(w) })
 }
 
-type partitionOffsetV1 struct {
+type ListOffsetResponseV1Partition struct {
 	Partition int32
 	ErrorCode int16
 	Timestamp int64
 	Offset    int64
 }
 
-func (p partitionOffsetV1) size() int32 {
+func (p ListOffsetResponseV1Partition) size() int32 {
 	return 4 + 2 + 8 + 8
 }
 
-func (p partitionOffsetV1) writeTo(w *bufio.Writer) {
+func (p ListOffsetResponseV1Partition) writeTo(w *bufio.Writer) {
 	writeInt32(w, p.Partition)
 	writeInt16(w, p.ErrorCode)
 	writeInt64(w, p.Timestamp)
 	writeInt64(w, p.Offset)
 }
 
-func (p *partitionOffsetV1) readFrom(r *bufio.Reader, sz int) (remain int, err error) {
+func (p *ListOffsetResponseV1Partition) readFrom(r *bufio.Reader, sz int) (remain int, err error) {
 	if remain, err = readInt32(r, sz, &p.Partition); err != nil {
 		return
 	}

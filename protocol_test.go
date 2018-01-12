@@ -38,31 +38,21 @@ func TestProtocol(t *testing.T) {
 
 		MetadataRequestV0{"A", "B", "C"},
 
-		listOffsetRequestV1{
+		ListOffsetRequestV1{
 			ReplicaID: 1,
-			Topics: []listOffsetRequestTopicV1{
-				{TopicName: "A", Partitions: []listOffsetRequestPartitionV1{
+			Topics: []ListOffsetRequestV1Topic{
+				{TopicName: "A", Partitions: []ListOffsetRequestV1Partition{
 					{Partition: 0, Time: -1},
 					{Partition: 1, Time: -1},
 					{Partition: 2, Time: -1},
 				}},
-				{TopicName: "B", Partitions: []listOffsetRequestPartitionV1{
+				{TopicName: "B", Partitions: []ListOffsetRequestV1Partition{
 					{Partition: 0, Time: -2},
 				}},
-				{TopicName: "C", Partitions: []listOffsetRequestPartitionV1{
+				{TopicName: "C", Partitions: []ListOffsetRequestV1Partition{
 					{Partition: 0, Time: 42},
 				}},
 			},
-		},
-
-		listOffsetResponseV1{
-			{TopicName: "A", PartitionOffsets: []partitionOffsetV1{
-				{Partition: 0, Timestamp: 42, Offset: 1},
-			}},
-			{TopicName: "B", PartitionOffsets: []partitionOffsetV1{
-				{Partition: 0, Timestamp: 43, Offset: 10},
-				{Partition: 1, Timestamp: 44, Offset: 100},
-			}},
 		},
 	}
 
