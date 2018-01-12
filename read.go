@@ -219,39 +219,6 @@ func read(r *bufio.Reader, sz int, a interface{}) (int, error) {
 	}
 }
 
-func readAll(r *bufio.Reader, sz int, ptrs ...interface{}) (int, error) {
-	var err error
-
-	for _, ptr := range ptrs {
-		if sz, err = readPtr(r, sz, ptr); err != nil {
-			break
-		}
-	}
-
-	return sz, err
-}
-
-func readPtr(r *bufio.Reader, sz int, ptr interface{}) (int, error) {
-	switch v := ptr.(type) {
-	case *int8:
-		return readInt8(r, sz, v)
-	case *int16:
-		return readInt16(r, sz, v)
-	case *int32:
-		return readInt32(r, sz, v)
-	case *int64:
-		return readInt64(r, sz, v)
-	case *string:
-		return readString(r, sz, v)
-	case *[]byte:
-		return readBytes(r, sz, v)
-	case readable:
-		return v.readFrom(r, sz)
-	default:
-		panic(fmt.Sprintf("unsupported type: %T", v))
-	}
-}
-
 func readStruct(r *bufio.Reader, sz int, v reflect.Value) (int, error) {
 	var err error
 	for i, n := 0, v.NumField(); i != n; i++ {

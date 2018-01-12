@@ -147,12 +147,12 @@ func NewConnWith(conn net.Conn, config ConnConfig) *Conn {
 	return c
 }
 
-func (c *Conn) wipListOffsetsV1(request ListOffsetRequestV1) (ListOffsetResponseV1, error) {
+func (c *Conn) ListOffsetsV1(request ListOffsetRequestV1) (ListOffsetResponseV1, error) {
 	var response ListOffsetResponseV1
 
 	err := c.readOperation(
 		func(deadline time.Time, id int32) error {
-			return c.writeRequest(describeGroupsRequest, v1, id, request)
+			return c.writeRequest(listOffsetRequest, v1, id, request)
 		},
 		func(deadline time.Time, size int) error {
 			return expectZeroSize(func() (remain int, err error) {
@@ -163,8 +163,8 @@ func (c *Conn) wipListOffsetsV1(request ListOffsetRequestV1) (ListOffsetResponse
 	if err != nil {
 		return ListOffsetResponseV1{}, err
 	}
-	for _, topic := range response {
-		for _, partition := range topic.Partitions {
+	for _, topic := range response.Responses {
+		for _, partition := range topic.PartitionResponses {
 			if partition.ErrorCode != 0 {
 				return ListOffsetResponseV1{}, Error(partition.ErrorCode)
 			}
