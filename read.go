@@ -49,6 +49,24 @@ func readString(r *bufio.Reader, sz int, v *string) (int, error) {
 	})
 }
 
+func readInt32Array(r *bufio.Reader, sz int, v *[]int32) (remain int, err error) {
+	var content []int32
+	fn := func(r *bufio.Reader, size int) (fnRemain int, fnErr error) {
+		var value int32
+		if fnRemain, fnErr = readInt32(r, size, &value); fnErr != nil {
+			return
+		}
+		content = append(content, value)
+		return
+	}
+	if remain, err = readArrayWith(r, sz, fn); err != nil {
+		return
+	}
+
+	*v = content
+	return
+}
+
 func readStringWith(r *bufio.Reader, sz int, cb func(*bufio.Reader, int, int) (int, error)) (int, error) {
 	var err error
 	var len int16

@@ -327,6 +327,34 @@ func (c *Conn) offsetCommit(request offsetCommitRequestV3) (offsetCommitResponse
 // offsetFetch fetches the offsets for the specified topic partitions
 //
 // See http://kafka.apache.org/protocol.html#The_Messages_OffsetFetch
+func (c *Conn) MetadataV0(request MetadataRequestV0) (MetadataResponseV0, error) {
+	var response MetadataResponseV0
+
+	err := c.readOperation(
+		func(deadline time.Time, id int32) error {
+			return c.writeRequest(metadataRequest, v0, id, request)
+		},
+		func(deadline time.Time, size int) error {
+			return expectZeroSize(func() (remain int, err error) {
+				return (&response).readFrom(&c.rbuf, size)
+			}())
+		},
+	)
+	if err != nil {
+		return MetadataResponseV0{}, err
+	}
+	for _, topic := range response.Topics {
+		if topic.TopicErrorCode != 0 {
+			return MetadataResponseV0{}, Error(topic.TopicErrorCode)
+		}
+	}
+
+	return response, nil
+}
+
+// offsetFetch fetches the offsets for the specified topic partitions
+//
+// See http://kafka.apache.org/protocol.html#The_Messages_OffsetFetch
 func (c *Conn) OffsetFetchV3(request OffsetFetchRequestV3) (OffsetFetchResponseV3, error) {
 	var response OffsetFetchResponseV3
 
@@ -693,10 +721,10 @@ func (c *Conn) hideReadPartitions(topics ...string) (partitions []Partition, err
 
 	err = c.readOperation(
 		func(deadline time.Time, id int32) error {
-			return c.writeRequest(metadataRequest, v0, id, topicMetadataRequestV0(topics))
+			return c.writeRequest(metadataRequest, v0, id, MetadataRequestV0(topics))
 		},
 		func(deadline time.Time, size int) error {
-			var res metadataResponseV0
+			var res MetadataResponseV0
 
 			if err := c.readResponse(size, &res); err != nil {
 				return err
