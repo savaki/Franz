@@ -5,6 +5,8 @@ import (
 	"bytes"
 	"reflect"
 	"testing"
+
+	"github.com/tj/assert"
 )
 
 func TestMetadataResponseV0(t *testing.T) {
@@ -51,5 +53,16 @@ func TestMetadataResponseV0(t *testing.T) {
 	if !reflect.DeepEqual(item, found) {
 		t.Error("expected item and found to be the same")
 		t.FailNow()
+	}
+}
+
+func BenchmarkMetadata(t *testing.B) {
+	conn, err := Dial("tcp", "localhost:9092")
+	assert.Nil(t, err)
+	defer conn.Close()
+
+	for i := 0; i < t.N; i++ {
+		_, err = conn.MetadataV0(nil)
+		assert.Nil(t, err)
 	}
 }
