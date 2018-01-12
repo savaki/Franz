@@ -1,3 +1,5 @@
+[![GoDoc](https://godoc.org/github.com/savaki/franz?status.svg)](https://godoc.org/github.com/savaki/franz)
+
 # Franz
 
 go library that implements kafka protocol only; based heavily on the work in segmentio/kafka-go
